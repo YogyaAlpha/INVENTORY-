@@ -71,7 +71,7 @@ A full-stack React + Node dashboard with secure registration and login.
 ## Run
 1. Install Node.js 22.13+ (Node.js 24 LTS recommended; the backend uses node:sqlite).
 2. Open this folder in VS Code.
-3. Run `npm install`.
+3. Run `npm install`. Copy `.env.example` to `.env` and configure a random JWT_SECRET (at least 32 characters) and ADMIN_PASSWORD (at least 12 characters).
 4. In terminal 1 run `npm run server`.
 5. In terminal 2 run `npm run dev`.
 6. Open `http://localhost:5173`.
@@ -179,3 +179,5 @@ Run `node tests/device-login.mjs` for isolated device-login integration tests us
 ## Password recovery and GitHub trial
 
 Email reset now uses the configured public HTTPS APP_URL (with supported hosting environment fallbacks) and reports delivery/configuration errors. A separate SMS password-reset screen is available at `/recover-password`, with dedicated single-use reset OTPs, attempt limits and resend cooldowns. Successful password resets revoke previous sessions. See HOSTING.md for GitHub Codespaces trial steps, Docker hosting, and required SMTP/Twilio settings. The repository includes a GitHub Actions build/test workflow; GitHub Pages alone does not run the backend.
+
+Server startup now requires configured JWT_SECRET and ADMIN_PASSWORD; there are no fallback credentials. Codespaces creates random values automatically on first startup.

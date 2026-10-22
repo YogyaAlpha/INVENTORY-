@@ -1,0 +1,11 @@
+node_modules/
+dist/
+gemflow.sqlite
+uploads/
+.env
+.env.*
+!.env.example
+
+*.sqlite*
+gemflow-data/
+*.log
