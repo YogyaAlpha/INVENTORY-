@@ -1503,9 +1503,20 @@ function AdminInventoryPanel({ token, logout }) {
         headers: { Authorization: `Bearer ${token}` },
         body,
       });
-      const result = await response.json();
+      const responseText = await response.text();
+      let result;
+      try { result = JSON.parse(responseText); } catch {
+        const advice = response.status === 401 || response.status === 403
+          ? "Access expired or was blocked by the trial host. Refresh the page and sign in again."
+          : response.status === 413
+            ? "The spreadsheet is too large. Use a file smaller than 15 MB."
+            : "The server or trial host returned an empty or invalid response. Refresh the page and try again.";
+        throw new Error(`Import could not be confirmed (HTTP ${response.status}). ${advice} Check Listed inventory before retrying.`);
+      }
       if (!response.ok)
         throw new Error([result.message, ...(result.errors || [])].join(" "));
+      if (!Number.isInteger(result.imported) || !Number.isInteger(result.updated))
+        throw new Error("The server returned an unexpected import result. Check Listed inventory before retrying.");
       setMessage({
         type: result.skipped ? "warning" : "success",
         text: `${result.imported} products imported, ${result.updated || 0} existing products updated${result.skipped ? `; ${result.skipped} rows skipped.` : "."}`,
