@@ -482,6 +482,7 @@ const parseInventoryNumber = (value) => {
 function inventoryValues(source, category) {
   return inventoryFields.map((field) => {
     const raw = field === "category" ? category : source[field];
+    if (field === "is_pair") return /^(1|true|yes|pair)$/i.test(String(raw ?? "").trim()) ? 1 : 0;
     if (numberFields.has(field)) return parseInventoryNumber(raw);
     return raw == null ? "" : String(raw).trim();
   });
@@ -1254,7 +1255,14 @@ app.post(
 app.post(
   "/api/admin/inventory/import",
   requireAdmin,
-  spreadsheetUpload.single("spreadsheet"),
+  (req, res, next) => spreadsheetUpload.single("spreadsheet")(req, res, (error) => {
+    if (!error) return next();
+    return res.status(error.code === "LIMIT_FILE_SIZE" ? 413 : 400).json({
+      message: error.code === "LIMIT_FILE_SIZE"
+        ? "The spreadsheet exceeds the 15 MB upload limit."
+        : "The spreadsheet upload was incomplete or invalid. Choose the file and try again.",
+    });
+  }),
   async (req, res) => {
     if (!req.file)
       return res.status(400).json({ message: "Choose an Excel or CSV file." });
@@ -1314,6 +1322,7 @@ app.post(
           if (exists) updated++;
           else imported++;
         } catch (error) {
+          console.error("Inventory import row failed:", rowNumber, error.message);
           errors.push(
             `Row ${rowNumber}: ${String(error.message).includes("UNIQUE") ? "Stock ID already exists." : "Could not import."}`,
           );
