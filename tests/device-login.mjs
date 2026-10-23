@@ -33,6 +33,22 @@ try {
   for(let i=0;i<100;i++){try{if((await call('health')).status===200)break;}catch{}await new Promise(r=>setTimeout(r,50));}
   assert.equal((await call('auth/register',{name:'Test',companyName:'Test',email:'user@test.local',phone:'+919999999999',password:'password123'})).status,201);
   const db=new DatabaseSync(join(dir,'gemflow.sqlite'));db.prepare("UPDATE users SET status='approved'").run();
+  const admin=await call('admin/login',{email:'admin@test.local',password:'test-admin-password'});
+  assert.ok(admin.token);
+  const importFile=async(name,bytes,field='spreadsheet')=>{
+    const form=new FormData();form.append('category','natural_diamond');form.append(field,new Blob([bytes]),name);
+    const r=await fetch('http://127.0.0.1:3198/api/admin/inventory/import',{method:'POST',headers:{Authorization:`Bearer ${admin.token}`},body:form});
+    assert.match(r.headers.get('content-type'),/application\/json/);return {status:r.status,...await r.json()};
+  };
+  const stoneCsv='Stock ID,Shape,Carat,Color,Clarity,Lab,Certificate Number,Length,Width,Height,Ratio\nTEST-HEART,Heart,0.97,I,SI2,GIA,1515890485,6.04,6.82,3.91,0.89\n';
+  const imported=await importFile('heart.csv',stoneCsv);assert.equal(imported.status,201,JSON.stringify(imported)+output);assert.equal(imported.imported,1);
+  const ExcelJS=(await import('exceljs')).default;const book=new ExcelJS.Workbook();const sheet=book.addWorksheet('Inventory');
+  sheet.addRow(['Stock ID','Shape','Carat']);sheet.addRow(['TEST-XLSX','Heart',0.97]);
+  assert.equal((await importFile('heart.xlsx',await book.xlsx.writeBuffer())).status,201);
+  assert.equal((await importFile('bad.xlsx','not a workbook')).status,400);
+  assert.equal((await importFile('heart.csv',stoneCsv,'wrongField')).status,400);
+  assert.equal((await importFile('large.csv',Buffer.alloc(15*1024*1024+1))).status,413);
+  console.log('PASS: heart CSV and XLSX imports, invalid workbook, multipart field and upload size errors return JSON.');
   const login=id=>call('auth/login',{identifier:'user@test.local',password:'password123',deviceId:id});
   const tokens=[];for(const id of ['one','two','three']){const r=await login(id);assert.ok(r.token);tokens.push(r.token);}
   assert.ok((await login('one')).token);
